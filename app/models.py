@@ -9,6 +9,6 @@ class SalesRecord(Base):
 
     id = Column(Integer, primary_key=True, index=True)
     product = Column(String(100), nullable=False)
-    category = Column(String(100), nullable=False)
+    category = Column(String(100), nullable=False, index=True)
     quantity = Column(Integer, nullable=False)
     unit_price = Column(Float, nullable=False)
