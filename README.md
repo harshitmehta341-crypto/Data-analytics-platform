@@ -1,4 +1,14 @@
+## 🚀 Live Demo
 
+**Nexus Data Intelligence — Interactive Data Analytics Dashboard**
+
+[Launch Live Dashboard](https://data-analytics-platform-x4eruhxqby7hrse4anb4co.streamlit.app/)
+
+**Tech Stack:** Python · FastAPI · SQLAlchemy · SQLite · Streamlit · Pandas · Plotly
+
+- [Backend API](https://data-analytics-platform-wfp4.onrender.com)
+- [Interactive API Documentation](https://data-analytics-platform-wfp4.onrender.com/docs)
+- [Source Code](https://github.com/harshitmehta341-crypto/Data-analytics-platform)
 ![API Tests](https://github.com/harshitmehta341-crypto/Data-analytics-platform/actions/workflows/tests.yml/badge.svg)
 [![GitHub](https://img.shields.io/badge/GitHub-Repository-black?logo=github)](https://github.com/harshitmehta341-crypto/Data-analytics-platform)
 # High-Performance RESTful Data & Analytics Platform
