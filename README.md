@@ -1,3 +1,6 @@
+
+![API Tests](https://github.com/harshitmehta341-crypto/Data-analytics-platform/actions/workflows/tests.yml/badge.svg)
+[![GitHub](https://img.shields.io/badge/GitHub-Repository-black?logo=github)](https://github.com/harshitmehta341-crypto/Data-analytics-platform)
 # High-Performance RESTful Data & Analytics Platform
 
 A Python-based REST API for managing sales records and generating analytical insights using FastAPI, SQLAlchemy, and SQLite. Includes automated API tests, pagination, SQL-based analytics, and performance benchmarking.
