@@ -1,6 +1,6 @@
 # High-Performance RESTful Data & Analytics Platform
 
-A Python-based REST API for managing sales records and generating analytical insights using FastAPI, SQLAlchemy, and SQLite. Includes automated API tests and Locust-based performance testing.
+A Python-based REST API for managing sales records and generating analytical insights using FastAPI, SQLAlchemy, and SQLite. Includes automated API tests, pagination, SQL-based analytics, and performance benchmarking.
 
 ## Features
 
@@ -8,8 +8,11 @@ A Python-based REST API for managing sales records and generating analytical ins
 - **Database persistence:** Store records in SQLite using SQLAlchemy ORM.
 - **Analytics endpoints:** Generate revenue summaries, category-level analytics, and top-product reports using SQL aggregation.
 - **Input validation:** Validate request data and reject invalid quantities or prices.
-- **Automated testing:** Test API operations, validation, and analytics using Pytest.
-- **Performance testing:** Simulate concurrent users and measure API response times with Locust.
+- **Pagination:** Retrieve records using limit and offset parameters with input validation.
+- **Database indexing:** Index record IDs and categories to support data retrieval and category analytics.
+- **Automated testing:** Test CRUD operations, pagination, input validation, and analytics using Pytest.
+- **Load testing:** Simulate concurrent users and measure API response times with Locust.
+- **Query benchmarking:** Compare analytics query execution times using a separate SQLite benchmark database.
 
 ## Tech Stack
 
@@ -27,7 +30,7 @@ A Python-based REST API for managing sales records and generating analytical ins
 |---|---|---|
 | GET | `/api/v1/health` | Check API health |
 | POST | `/api/v1/records` | Create a sales record |
-| GET | `/api/v1/records` | List sales records |
+| GET | `/api/v1/records` | List records with pagination |
 | GET | `/api/v1/records/{record_id}` | Retrieve one record |
 | PUT | `/api/v1/records/{record_id}` | Update a record |
 | DELETE | `/api/v1/records/{record_id}` | Delete a record |
@@ -63,7 +66,7 @@ pip install -r requirements.txt
 uvicorn app.main:app --reload
 ```
 
-The API will be available at `http://127.0.0.1:8000`.
+API base URL: `http://127.0.0.1:8000`
 
 Interactive API documentation: `http://127.0.0.1:8000/docs`
 
@@ -75,9 +78,9 @@ Run the test suite from the project root:
 python -m pytest -v
 ```
 
-**Current result:** 9 tests passed in the local test run.
+**Latest observed result:** 12 tests passed.
 
-## Performance Testing
+## Performance Testing with Locust
 
 Start the API in one terminal, then run Locust in another:
 
@@ -87,9 +90,9 @@ locust -f locustfile.py --host http://127.0.0.1:8000
 
 Open `http://localhost:8089`, configure the number of simulated users and spawn rate, and start the test.
 
-### Initial Local Benchmark
+### Initial Local API Load Test
 
-Observed during a local run with 10 simulated users:
+Observed during one local run with 10 simulated users:
 
 | Metric | Result |
 |---|---:|
@@ -100,7 +103,28 @@ Observed during a local run with 10 simulated users:
 | Maximum response time | 82 ms |
 | Observed throughput | 5.4 requests/second |
 
-These measurements represent one local test run and are not a production capacity guarantee. Results depend on the test duration, machine, data volume, and environment.
+These measurements represent one local test run, not a production capacity guarantee. Results depend on the machine, workload, data volume, and environment.
+
+## Analytics Query Benchmark
+
+Run the benchmark script from the project root:
+
+```bash
+python scripts/benchmark_analytics.py
+```
+
+The script creates a temporary SQLite database with 50,000 synthetic sales records and compares the average execution time of category and product aggregation queries with and without the corresponding index. It runs each query 10 times after a warm-up query.
+
+### Initial Observed Results
+
+| Query | Without index | With index | Observed change |
+|---|---:|---:|---:|
+| Category analytics | 27.568 ms | 17.502 ms | 36.5% faster |
+| Top products | 13.043 ms | 13.889 ms | 6.5% slower |
+
+In this run, the category index reduced the measured execution time, while the product index did not improve it. The results are preliminary and specific to one local run on synthetic data. Repeated controlled measurements on representative workloads are needed to establish reliable performance differences.
+
+The benchmark uses a temporary database and does not modify the application's `data.db` file.
 
 ## Project Structure
 
@@ -111,6 +135,8 @@ Data-analytics-platform/
 │   ├── database.py
 │   ├── models.py
 │   └── analytics.py
+├── scripts/
+│   └── benchmark_analytics.py
 ├── tests/
 │   └── test_api.py
 ├── locustfile.py
@@ -120,11 +146,12 @@ Data-analytics-platform/
 
 ## Future Improvements
 
-- Add database indexes and benchmark query performance.
-- Add pagination, filtering, and sorting for record retrieval.
-- Introduce authentication and authorization.
-- Add structured logging and centralized error handling.
-- Deploy the API and run tests in a production-like environment.
+- Add authentication and authorization.
+- Introduce structured logging and centralized error handling.
+- Evaluate query performance on larger, representative datasets.
+- Add database migrations and production database support.
+- Add CI/CD and deploy the API to a cloud environment.
+- Run repeatable load tests with documented workload and environment settings.
 
 ## Author
 
