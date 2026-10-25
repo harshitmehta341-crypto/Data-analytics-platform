@@ -1,6 +1,12 @@
 
-from fastapi import FastAPI, HTTPException, status
+from fastapi import Depends, FastAPI, HTTPException, status
 from pydantic import BaseModel, Field
+from sqlalchemy.orm import Session
+
+from app.database import Base, engine, get_db
+from app.models import SalesRecord as SalesRecordDB
+
+Base.metadata.create_all(bind=engine)
 
 app = FastAPI(
     title="Data & Analytics Platform",
@@ -9,17 +15,22 @@ app = FastAPI(
 )
 
 
-# 1. Define the data structure
-class SalesRecord(BaseModel):
+class SalesRecordInput(BaseModel):
     product: str = Field(min_length=1, max_length=100)
     category: str = Field(min_length=1, max_length=100)
     quantity: int = Field(gt=0)
     unit_price: float = Field(ge=0)
 
 
-# 2. Temporary in-memory storage
-records: dict[int, SalesRecord] = {}
-next_id = 1
+def serialize_record(record: SalesRecordDB):
+    return {
+        "id": record.id,
+        "product": record.product,
+        "category": record.category,
+        "quantity": record.quantity,
+        "unit_price": record.unit_price,
+        "total_value": record.quantity * record.unit_price,
+    }
 
 
 @app.get("/")
@@ -35,25 +46,26 @@ def health_check():
     return {"status": "ok"}
 
 
-# CREATE: Add a sales record
 @app.post("/api/v1/records", status_code=status.HTTP_201_CREATED)
-def create_record(record: SalesRecord):
-    global next_id
+def create_record(
+    record: SalesRecordInput,
+    db: Session = Depends(get_db),
+):
+    db_record = SalesRecordDB(**record.model_dump())
 
-    record_id = next_id
-    records[record_id] = record
-    next_id += 1
+    db.add(db_record)
+    db.commit()
+    db.refresh(db_record)
 
-    return {
-        "id": record_id,
-        **record.model_dump(),
-        "total_value": record.quantity * record.unit_price,
-    }
+    return serialize_record(db_record)
 
 
-# READ: Get all records with pagination
 @app.get("/api/v1/records")
-def get_records(limit: int = 10, offset: int = 0):
+def get_records(
+    limit: int = 10,
+    offset: int = 0,
+    db: Session = Depends(get_db),
+):
     if not 1 <= limit <= 100:
         raise HTTPException(
             status_code=400,
@@ -66,61 +78,69 @@ def get_records(limit: int = 10, offset: int = 0):
             detail="offset cannot be negative",
         )
 
-    items = list(records.items())
-    selected = items[offset:offset + limit]
+    total = db.query(SalesRecordDB).count()
+
+    records = (
+        db.query(SalesRecordDB)
+        .order_by(SalesRecordDB.id)
+        .offset(offset)
+        .limit(limit)
+        .all()
+    )
 
     return {
-        "total": len(records),
+        "total": total,
         "limit": limit,
         "offset": offset,
-        "data": [
-            {
-                "id": record_id,
-                **record.model_dump(),
-                "total_value": record.quantity * record.unit_price,
-            }
-            for record_id, record in selected
-        ],
+        "data": [serialize_record(r) for r in records],
     }
 
 
-# READ: Get one record by ID
 @app.get("/api/v1/records/{record_id}")
-def get_record(record_id: int):
-    record = records.get(record_id)
+def get_record(
+    record_id: int,
+    db: Session = Depends(get_db),
+):
+    record = db.get(SalesRecordDB, record_id)
 
     if record is None:
         raise HTTPException(status_code=404, detail="Record not found")
 
-    return {
-        "id": record_id,
-        **record.model_dump(),
-        "total_value": record.quantity * record.unit_price,
-    }
+    return serialize_record(record)
 
 
-# UPDATE: Replace an existing record
 @app.put("/api/v1/records/{record_id}")
-def update_record(record_id: int, updated_record: SalesRecord):
-    if record_id not in records:
+def update_record(
+    record_id: int,
+    updated_record: SalesRecordInput,
+    db: Session = Depends(get_db),
+):
+    record = db.get(SalesRecordDB, record_id)
+
+    if record is None:
         raise HTTPException(status_code=404, detail="Record not found")
 
-    records[record_id] = updated_record
+    for key, value in updated_record.model_dump().items():
+        setattr(record, key, value)
 
-    return {
-        "id": record_id,
-        **updated_record.model_dump(),
-        "total_value": updated_record.quantity * updated_record.unit_price,
-    }
+    db.commit()
+    db.refresh(record)
+
+    return serialize_record(record)
 
 
-# DELETE: Remove a record
 @app.delete("/api/v1/records/{record_id}")
-def delete_record(record_id: int):
-    if record_id not in records:
+def delete_record(
+    record_id: int,
+    db: Session = Depends(get_db),
+):
+    record = db.get(SalesRecordDB, record_id)
+
+    if record is None:
         raise HTTPException(status_code=404, detail="Record not found")
 
-    del records[record_id]
+    db.delete(record)
+    db.commit()
 
     return {
         "message": "Record deleted successfully",
