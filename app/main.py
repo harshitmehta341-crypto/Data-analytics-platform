@@ -5,6 +5,7 @@ from sqlalchemy.orm import Session
 
 from app.database import Base, engine, get_db
 from app.models import SalesRecord as SalesRecordDB
+from app.analytics import router as analytics_router
 
 Base.metadata.create_all(bind=engine)
 
@@ -13,6 +14,7 @@ app = FastAPI(
     description="RESTful API for structured data and analytics",
     version="1.0.0",
 )
+app.include_router(analytics_router)
 
 
 class SalesRecordInput(BaseModel):
